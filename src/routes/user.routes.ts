@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { requireAuth, requireRole, requireSelfOrAdmin } from '../middleware/auth';
 import { cacheResponse } from '../middleware/cache';
 import { validate } from '../middleware/validate';
@@ -15,13 +16,15 @@ export const userRouter = Router();
 userRouter.use(requireAuth);
 
 userRouter.post('/', requireRole('admin'), validate(createUserSchema), async (req, res) => {
-  const existing = await User.findOne({ email: req.body.email });
+  const email = String(req.body.email);
+  const existing = await User.findOne(mongoose.sanitizeFilter({ email }));
   if (existing) {
     throw new AppError('A user with that email already exists', 409);
   }
 
   const user = await User.create({
     ...req.body,
+    email,
     password: await hashPassword(req.body.password),
   });
 
@@ -30,11 +33,12 @@ userRouter.post('/', requireRole('admin'), validate(createUserSchema), async (re
 
 userRouter.get('/', requireRole('admin'), validate(listUsersSchema), async (req, res) => {
   const { page, limit, search } = req.query as unknown as { page: number; limit: number; search?: string };
-  const filter = search
+  const escapedSearch = search ? search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : undefined;
+  const filter = escapedSearch
     ? {
         $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { email: { $regex: search, $options: 'i' } },
+          { name: { $regex: escapedSearch, $options: 'i' } },
+          { email: { $regex: escapedSearch, $options: 'i' } },
         ],
       }
     : {};
@@ -56,7 +60,8 @@ userRouter.get('/', requireRole('admin'), validate(listUsersSchema), async (req,
 });
 
 userRouter.get('/:id', validate(userIdSchema), requireSelfOrAdmin(), async (req, res) => {
-  const user = await User.findById(req.params.id);
+  const userId = new mongoose.Types.ObjectId(String(req.params.id));
+  const user = await User.findById(userId);
   if (!user) {
     throw new AppError('User not found', 404);
   }
@@ -65,6 +70,7 @@ userRouter.get('/:id', validate(userIdSchema), requireSelfOrAdmin(), async (req,
 });
 
 userRouter.put('/:id', validate(updateUserSchema), requireSelfOrAdmin(), async (req, res) => {
+  const userId = new mongoose.Types.ObjectId(String(req.params.id));
   const updates = { ...req.body } as Record<string, unknown>;
 
   if (updates.role && req.user!.role !== 'admin') {
@@ -75,7 +81,7 @@ userRouter.put('/:id', validate(updateUserSchema), requireSelfOrAdmin(), async (
     updates.password = await hashPassword(String(updates.password));
   }
 
-  const user = await User.findByIdAndUpdate(req.params.id, updates, {
+  const user = await User.findByIdAndUpdate(userId, updates, {
     returnDocument: 'after',
     runValidators: true,
   });
@@ -90,19 +96,21 @@ userRouter.put('/:id', validate(updateUserSchema), requireSelfOrAdmin(), async (
 
 userRouter.delete('/:id', validate(userIdSchema), requireRole('admin'), async (req, res) => {
   const userId = String(req.params.id);
-  const user = await User.findByIdAndDelete(userId);
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  const user = await User.findByIdAndDelete(userObjectId);
   if (!user) {
     throw new AppError('User not found', 404);
   }
 
-  await Task.deleteMany({ owner: userId });
+  await Task.deleteMany({ owner: userObjectId });
   await removeUserTokens(userId);
   invalidateCache((key) => key.includes(`/api/users/${userId}/`) || key.endsWith(`:${userId}`));
   res.status(204).send();
 });
 
 userRouter.get('/:id/profile', validate(userIdSchema), requireSelfOrAdmin(), cacheResponse(15_000), async (req, res) => {
-  const user = await User.findById(req.params.id);
+  const userId = new mongoose.Types.ObjectId(String(req.params.id));
+  const user = await User.findById(userId);
   if (!user) {
     throw new AppError('User not found', 404);
   }

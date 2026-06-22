@@ -6,7 +6,7 @@ const taskBody = {
   description: z.string().trim().max(500).optional(),
   status: z.enum(['pending', 'in-progress', 'completed']).optional(),
   priority: z.enum(['low', 'medium', 'high']).optional(),
-  dueDate: z.iso.datetime().optional(),
+  dueDate: z.string().datetime().optional(),
 };
 
 export const createTaskSchema = z.object({
@@ -22,7 +22,7 @@ export const updateTaskSchema = z.object({
       description: z.string().trim().max(500).optional(),
       status: z.enum(['pending', 'in-progress', 'completed']).optional(),
       priority: z.enum(['low', 'medium', 'high']).optional(),
-      dueDate: z.iso.datetime().nullable().optional(),
+      dueDate: z.string().datetime().nullable().optional(),
     })
     .refine((value) => Object.keys(value).length > 0, 'At least one field must be provided'),
   params: z.object({

@@ -1,5 +1,6 @@
 import { RefreshToken } from '../models/RefreshToken';
 import { User } from '../models/User';
+import mongoose from 'mongoose';
 import { AppError } from '../utils/app-error';
 import { comparePassword, hashPassword } from '../utils/password';
 import { hashToken, signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/tokens';
@@ -25,13 +26,15 @@ export const issueTokensForUser = async (user: { id: string; email: string; role
 };
 
 export const registerUser = async (input: { name: string; email: string; password: string }) => {
-  const existing = await User.findOne({ email: input.email });
+  const email = String(input.email);
+  const existing = await User.findOne(mongoose.sanitizeFilter({ email }));
   if (existing) {
     throw new AppError('A user with that email already exists', 409);
   }
 
   const user = await User.create({
     ...input,
+    email,
     password: await hashPassword(input.password),
   });
 
@@ -45,7 +48,8 @@ export const registerUser = async (input: { name: string; email: string; passwor
 };
 
 export const loginUser = async (input: { email: string; password: string }) => {
-  const user = await User.findOne({ email: input.email }).select('+password');
+  const email = String(input.email);
+  const user = await User.findOne(mongoose.sanitizeFilter({ email })).select('+password');
   if (!user || !(await comparePassword(input.password, String(user.password)))) {
     throw new AppError('Invalid email or password', 401);
   }

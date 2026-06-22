@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { requireAuth } from '../middleware/auth';
 import { cacheResponse } from '../middleware/cache';
 import { validate } from '../middleware/validate';
@@ -34,7 +35,7 @@ taskRouter.get('/', validate(listTasksSchema), cacheResponse(15_000), async (req
     order: 'asc' | 'desc';
   };
 
-  const filter: Record<string, unknown> = { owner: req.user!.id };
+  const filter: Record<string, unknown> = { owner: new mongoose.Types.ObjectId(req.user!.id) };
   if (status) {
     filter.status = status;
   }
@@ -45,12 +46,14 @@ taskRouter.get('/', validate(listTasksSchema), cacheResponse(15_000), async (req
     filter.$text = { $search: search };
   }
 
+  const safeFilter = mongoose.sanitizeFilter(filter);
+
   const [tasks, total] = await Promise.all([
-    Task.find(filter)
+    Task.find(safeFilter)
       .sort({ [sortBy]: order === 'asc' ? 1 : -1 })
       .skip((page - 1) * limit)
       .limit(limit),
-    Task.countDocuments(filter),
+    Task.countDocuments(safeFilter),
   ]);
 
   res.json({
@@ -65,7 +68,9 @@ taskRouter.get('/', validate(listTasksSchema), cacheResponse(15_000), async (req
 });
 
 taskRouter.get('/:id', validate(taskIdSchema), async (req, res) => {
-  const task = await Task.findOne({ _id: req.params.id, owner: req.user!.id });
+  const taskId = new mongoose.Types.ObjectId(String(req.params.id));
+  const ownerId = new mongoose.Types.ObjectId(req.user!.id);
+  const task = await Task.findOne({ _id: taskId, owner: ownerId });
   if (!task) {
     throw new AppError('Task not found', 404);
   }
@@ -74,6 +79,8 @@ taskRouter.get('/:id', validate(taskIdSchema), async (req, res) => {
 });
 
 taskRouter.put('/:id', validate(updateTaskSchema), async (req, res) => {
+  const taskId = new mongoose.Types.ObjectId(String(req.params.id));
+  const ownerId = new mongoose.Types.ObjectId(req.user!.id);
   const updates = {
     ...req.body,
     ...(req.body.dueDate !== undefined ? { dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null } : {}),
@@ -81,7 +88,7 @@ taskRouter.put('/:id', validate(updateTaskSchema), async (req, res) => {
     ...(req.body.status && req.body.status !== 'completed' ? { completedAt: null } : {}),
   };
 
-  const task = await Task.findOneAndUpdate({ _id: req.params.id, owner: req.user!.id }, updates, {
+  const task = await Task.findOneAndUpdate({ _id: taskId, owner: ownerId }, updates, {
     returnDocument: 'after',
     runValidators: true,
   });
@@ -95,7 +102,9 @@ taskRouter.put('/:id', validate(updateTaskSchema), async (req, res) => {
 });
 
 taskRouter.delete('/:id', validate(taskIdSchema), async (req, res) => {
-  const task = await Task.findOneAndDelete({ _id: req.params.id, owner: req.user!.id });
+  const taskId = new mongoose.Types.ObjectId(String(req.params.id));
+  const ownerId = new mongoose.Types.ObjectId(req.user!.id);
+  const task = await Task.findOneAndDelete({ _id: taskId, owner: ownerId });
   if (!task) {
     throw new AppError('Task not found', 404);
   }
@@ -105,8 +114,10 @@ taskRouter.delete('/:id', validate(taskIdSchema), async (req, res) => {
 });
 
 taskRouter.patch('/:id/complete', validate(taskIdSchema), async (req, res) => {
+  const taskId = new mongoose.Types.ObjectId(String(req.params.id));
+  const ownerId = new mongoose.Types.ObjectId(req.user!.id);
   const task = await Task.findOneAndUpdate(
-    { _id: req.params.id, owner: req.user!.id },
+    { _id: taskId, owner: ownerId },
     { status: 'completed', completedAt: new Date() },
     { returnDocument: 'after', runValidators: true },
   );
