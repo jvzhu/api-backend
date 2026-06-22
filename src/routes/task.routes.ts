@@ -104,14 +104,13 @@ taskRouter.put('/:id', validate(updateTaskSchema), async (req, res) => {
     updates.dueDate = req.body.dueDate ? new Date(req.body.dueDate) : null;
   }
 
-  const task = await Task.findOneAndUpdate({ _id: taskId, owner: ownerId }, updates, {
-    returnDocument: 'after',
-    runValidators: true,
-  });
-
+  const task = await Task.findOne({ _id: taskId, owner: ownerId });
   if (!task) {
     throw new AppError('Task not found', 404);
   }
+
+  Object.assign(task, updates);
+  await task.save();
 
   invalidateCache((key) => key.includes('/api/tasks') || key.includes(`/api/users/${req.user!.id}/profile`));
   res.json({ task });

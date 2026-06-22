@@ -97,14 +97,13 @@ userRouter.put('/:id', validate(updateUserSchema), requireSelfOrAdmin(), async (
     updates.profile = req.body.profile;
   }
 
-  const user = await User.findOneAndUpdate({ _id: userId }, updates, {
-    returnDocument: 'after',
-    runValidators: true,
-  });
-
+  const user = await User.findById(userId);
   if (!user) {
     throw new AppError('User not found', 404);
   }
+
+  Object.assign(user, updates);
+  await user.save();
 
   invalidateCache((key) => key.includes(`/api/users/${req.params.id}/profile`));
   res.json({ user });
