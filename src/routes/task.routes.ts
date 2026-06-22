@@ -81,12 +81,28 @@ taskRouter.get('/:id', validate(taskIdSchema), async (req, res) => {
 taskRouter.put('/:id', validate(updateTaskSchema), async (req, res) => {
   const taskId = new mongoose.Types.ObjectId(String(req.params.id));
   const ownerId = new mongoose.Types.ObjectId(req.user!.id);
-  const updates = {
-    ...req.body,
-    ...(req.body.dueDate !== undefined ? { dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null } : {}),
-    ...(req.body.status === 'completed' ? { completedAt: new Date() } : {}),
-    ...(req.body.status && req.body.status !== 'completed' ? { completedAt: null } : {}),
-  };
+  const updates: Record<string, unknown> = {};
+
+  if (req.body.title !== undefined) {
+    updates.title = req.body.title;
+  }
+
+  if (req.body.description !== undefined) {
+    updates.description = req.body.description;
+  }
+
+  if (req.body.priority !== undefined) {
+    updates.priority = req.body.priority;
+  }
+
+  if (req.body.status !== undefined) {
+    updates.status = req.body.status;
+    updates.completedAt = req.body.status === 'completed' ? new Date() : null;
+  }
+
+  if (req.body.dueDate !== undefined) {
+    updates.dueDate = req.body.dueDate ? new Date(req.body.dueDate) : null;
+  }
 
   const task = await Task.findOneAndUpdate({ _id: taskId, owner: ownerId }, updates, {
     returnDocument: 'after',

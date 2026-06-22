@@ -12,7 +12,7 @@ export const requireAuth = async (req: Request, _res: Response, next: NextFuncti
 
     const token = authorization.replace('Bearer ', '');
     const payload = verifyAccessToken(token);
-    const user = await User.findById(payload.sub).select('+password');
+    const user = await User.findById(payload.sub);
 
     if (!user) {
       throw new AppError('User no longer exists', 401);

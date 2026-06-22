@@ -71,17 +71,33 @@ userRouter.get('/:id', validate(userIdSchema), requireSelfOrAdmin(), async (req,
 
 userRouter.put('/:id', validate(updateUserSchema), requireSelfOrAdmin(), async (req, res) => {
   const userId = new mongoose.Types.ObjectId(String(req.params.id));
-  const updates = { ...req.body } as Record<string, unknown>;
+  const updates: Record<string, unknown> = {};
 
-  if (updates.role && req.user!.role !== 'admin') {
+  if (req.body.name !== undefined) {
+    updates.name = req.body.name;
+  }
+
+  if (req.body.email !== undefined) {
+    updates.email = req.body.email;
+  }
+
+  if (req.body.role !== undefined && req.user!.role !== 'admin') {
     throw new AppError('Only admins can change roles', 403);
   }
 
-  if (updates.password) {
-    updates.password = await hashPassword(String(updates.password));
+  if (req.body.role !== undefined) {
+    updates.role = req.body.role;
   }
 
-  const user = await User.findByIdAndUpdate(userId, updates, {
+  if (req.body.password !== undefined) {
+    updates.password = await hashPassword(String(req.body.password));
+  }
+
+  if (req.body.profile !== undefined) {
+    updates.profile = req.body.profile;
+  }
+
+  const user = await User.findOneAndUpdate({ _id: userId }, updates, {
     returnDocument: 'after',
     runValidators: true,
   });
