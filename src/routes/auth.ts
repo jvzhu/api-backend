@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { validateBody } from '../middleware/validate';
 import { loginSchema, refreshSchema, registerSchema } from '../validators/schemas';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt';
+import { logger } from '../config/logger';
 
 export const authRouter = Router();
 
@@ -81,7 +82,8 @@ authRouter.post('/refresh', validateBody(refreshSchema), async (req, res, next) 
     await user.save();
 
     res.json(tokens);
-  } catch {
+  } catch (error) {
+    logger.error('Refresh token failed', error);
     next(createError(401, 'Invalid refresh token'));
   }
 });
@@ -92,7 +94,8 @@ authRouter.post('/logout', validateBody(refreshSchema), async (req, res, next) =
     const payload = verifyRefreshToken(refreshToken);
     await User.findByIdAndUpdate(payload.sub, { $pull: { refreshTokens: refreshToken } });
     res.status(204).send();
-  } catch {
+  } catch (error) {
+    logger.error('Logout token invalidation failed', error);
     next(createError(401, 'Invalid refresh token'));
   }
 });

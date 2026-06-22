@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import createError from 'http-errors';
+import { Types, isValidObjectId } from 'mongoose';
 import { User } from '../models/User';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { validateBody, validateParams } from '../middleware/validate';
@@ -9,18 +10,41 @@ import { Task } from '../models/Task';
 
 export const usersRouter = Router();
 
+function parseUserId(id: string): Types.ObjectId {
+  if (!isValidObjectId(id)) {
+    throw createError(400, 'Invalid user id');
+  }
+  return new Types.ObjectId(id);
+}
+
+function hasUnsafeKeys(payload: Record<string, unknown>): boolean {
+  return Object.keys(payload).some((key) => key.startsWith('$') || key.includes('.'));
+}
+
+function pickAllowedUserFields(payload: Record<string, unknown>): Record<string, unknown> {
+  const allowed = new Set(['name', 'email', 'role']);
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => allowed.has(key)));
+}
+
 usersRouter.use(requireAuth);
 
 usersRouter.post('/', requireRole('admin'), validateBody(userCreateSchema), async (req, res, next) => {
   try {
-    const { email, name, password, role } = req.body;
-    const existing = await User.findOne({ email: String(email).toLowerCase() }).lean();
+    const payload = req.body as Record<string, unknown>;
+    if (hasUnsafeKeys(payload)) {
+      throw createError(400, 'Invalid payload keys');
+    }
+    const email = String(payload.email).toLowerCase();
+    const name = String(payload.name);
+    const password = String(payload.password);
+    const role = payload.role === 'admin' ? 'admin' : 'user';
+    const existing = await User.findOne({ email }).lean();
     if (existing) {
       throw createError(409, 'Email already in use');
     }
 
-    const hash = await bcrypt.hash(String(password), 10);
-    const user = await User.create({ email, name, password: hash, role: role ?? 'user' });
+    const hash = await bcrypt.hash(password, 10);
+    const user = await User.create({ email, name, password: hash, role });
     res.status(201).json({ id: user.id, email: user.email, name: user.name, role: user.role });
   } catch (error) {
     next(error);
@@ -49,11 +73,12 @@ usersRouter.get('/', requireRole('admin'), async (req, res, next) => {
 
 usersRouter.get('/:id', validateParams(idParamSchema), async (req, res, next) => {
   try {
+    const userId = parseUserId(String(req.params.id));
     if (req.user?.role !== 'admin' && req.user?.sub !== req.params.id) {
       throw createError(403, 'Forbidden');
     }
 
-    const user = await User.findById(req.params.id, { password: 0, refreshTokens: 0 }).lean();
+    const user = await User.findById(userId, { password: 0, refreshTokens: 0 }).lean();
     if (!user) {
       throw createError(404, 'User not found');
     }
@@ -66,16 +91,21 @@ usersRouter.get('/:id', validateParams(idParamSchema), async (req, res, next) =>
 
 usersRouter.put('/:id', validateParams(idParamSchema), validateBody(userUpdateSchema), async (req, res, next) => {
   try {
+    const payload = req.body as Record<string, unknown>;
+    if (hasUnsafeKeys(payload)) {
+      throw createError(400, 'Invalid payload keys');
+    }
+    const userId = parseUserId(String(req.params.id));
     if (req.user?.role !== 'admin' && req.user?.sub !== req.params.id) {
       throw createError(403, 'Forbidden');
     }
 
-    const updates = req.body as { name?: string; email?: string; role?: 'user' | 'admin' };
+    const updates = pickAllowedUserFields(payload) as { name?: string; email?: string; role?: 'user' | 'admin' };
     if (req.user?.role !== 'admin') {
       delete updates.role;
     }
 
-    const user = await User.findByIdAndUpdate(req.params.id, updates, {
+    const user = await User.findByIdAndUpdate(userId, updates, {
       new: true,
       runValidators: true,
       projection: { password: 0, refreshTokens: 0 }
@@ -93,7 +123,8 @@ usersRouter.put('/:id', validateParams(idParamSchema), validateBody(userUpdateSc
 
 usersRouter.delete('/:id', requireRole('admin'), validateParams(idParamSchema), async (req, res, next) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const userId = parseUserId(String(req.params.id));
+    const user = await User.findByIdAndDelete(userId);
     if (!user) {
       throw createError(404, 'User not found');
     }
@@ -106,11 +137,12 @@ usersRouter.delete('/:id', requireRole('admin'), validateParams(idParamSchema), 
 
 usersRouter.get('/:id/profile', validateParams(idParamSchema), async (req, res, next) => {
   try {
+    const userId = parseUserId(String(req.params.id));
     if (req.user?.role !== 'admin' && req.user?.sub !== req.params.id) {
       throw createError(403, 'Forbidden');
     }
 
-    const user = await User.findById(req.params.id, { password: 0, refreshTokens: 0 }).lean();
+    const user = await User.findById(userId, { password: 0, refreshTokens: 0 }).lean();
     if (!user) {
       throw createError(404, 'User not found');
     }

@@ -15,7 +15,8 @@ function validateObject(source: Record<string, unknown>, schema: Schema): string
   const errors: string[] = [];
   for (const [key, rule] of Object.entries(schema)) {
     const value = source[key];
-    if (rule.required && (value === undefined || value === null || value === '')) {
+    const isEmptyString = typeof value === 'string' && value.trim() === '';
+    if (rule.required && (value === undefined || value === null || isEmptyString)) {
       errors.push(`${key} is required`);
       continue;
     }
