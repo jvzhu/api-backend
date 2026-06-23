@@ -175,6 +175,17 @@ paths:
           name: id
           required: true
           schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                description: { type: string }
+                priority: { type: string, enum: [low, medium, high] }
+                completed: { type: boolean }
       responses:
         '200':
           description: Updated task
