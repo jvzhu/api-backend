@@ -36,14 +36,17 @@ usersRouter.post('/', requireRole('admin'), validateBody(userCreateSchema), asyn
     }
     const email = String(payload.email).toLowerCase();
     const name = String(payload.name);
-    const password = String(payload.password);
+    const passwordValue = String(payload.password);
+    if (passwordValue.length < 8) {
+      throw createError(400, 'Password must be at least 8 characters');
+    }
     const role = payload.role === 'admin' ? 'admin' : 'user';
     const existing = await User.findOne({ email }).lean();
     if (existing) {
       throw createError(409, 'Email already in use');
     }
 
-    const hash = await bcrypt.hash(password, 10);
+    const hash = await bcrypt.hash(passwordValue, 10);
     const user = await User.create({ email, name, password: hash, role });
     res.status(201).json({ id: user.id, email: user.email, name: user.name, role: user.role });
   } catch (error) {
