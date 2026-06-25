@@ -21,12 +21,16 @@ function tokenPair(userId: string, role: 'user' | 'admin') {
 authRouter.post('/register', validateBody(registerSchema), async (req, res, next) => {
   try {
     const { email, name, password } = req.body;
+    const passwordValue = String(password);
+    if (passwordValue.length < 8) {
+      throw createError(400, 'Password must be at least 8 characters');
+    }
     const existing = await User.findOne({ email: String(email).toLowerCase() }).lean();
     if (existing) {
       throw createError(409, 'Email already in use');
     }
 
-    const hash = await bcrypt.hash(String(password), 10);
+    const hash = await bcrypt.hash(passwordValue, 10);
     const user = await User.create({ email, name, password: hash });
     const tokens = tokenPair(user.id, user.role);
     user.refreshTokens.push(tokens.refreshToken);
