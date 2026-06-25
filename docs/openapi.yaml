@@ -130,6 +130,16 @@ paths:
           name: id
           required: true
           schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                role: { type: string, enum: [user, admin] }
       responses:
         '200':
           description: Updated user
