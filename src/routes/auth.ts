@@ -111,8 +111,7 @@ authRouter.get('/me', requireAuth, async (req, res, next) => {
       throw createError(404, 'User not found');
     }
 
-    res.json({ id: user._id, email: user.email, name: user.name, role: user.role });
-  } catch (error) {
+    res.json({ id: String(user._id), email: user.email, name: user.name, role: user.role });
     next(error);
   }
 });
