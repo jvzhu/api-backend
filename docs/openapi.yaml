@@ -39,12 +39,30 @@ paths:
   /api/auth/refresh:
     post:
       summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
       responses:
         '200':
           description: Refreshed
   /api/auth/logout:
     post:
       summary: Logout user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
       responses:
         '204':
           description: Logged out
