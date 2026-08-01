@@ -12,6 +12,7 @@ import { authRouter } from './routes/auth.routes';
 import { healthRouter } from './routes/health.routes';
 import { payoutRouter } from './routes/payout.routes';
 import { royaltyRouter } from './routes/royalty.routes';
+import { stripeConnectRouter } from './routes/stripe-connect.routes';
 import { stripeRouter } from './routes/stripe.routes';
 import { taskRouter } from './routes/task.routes';
 import { userRouter } from './routes/user.routes';
@@ -52,6 +53,7 @@ export const createApp = () => {
   app.use('/api/tasks', taskRouter);
   app.use('/api/royalties', royaltyRouter);
   app.use('/api/payouts', payoutRouter);
+  app.use('/api/stripe/connect', stripeConnectRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

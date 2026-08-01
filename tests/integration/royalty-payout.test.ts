@@ -6,27 +6,30 @@ import { Payout } from '../../src/models/Payout';
 import { app } from '../helpers/test-app';
 
 // Mock Stripe so tests never hit real API
+const mockStripeInstance = {
+  transfers: {
+    create: jest.fn().mockResolvedValue({ id: 'tr_mock_123' }),
+  },
+  accounts: {
+    create: jest.fn().mockResolvedValue({ id: 'acct_mock_456' }),
+    retrieve: jest.fn().mockResolvedValue({
+      id: 'acct_mock_456',
+      charges_enabled: true,
+      payouts_enabled: true,
+      details_submitted: true,
+    }),
+  },
+  accountLinks: {
+    create: jest.fn().mockResolvedValue({ url: 'https://connect.stripe.com/mock' }),
+  },
+  webhooks: {
+    constructEvent: jest.fn(),
+  },
+};
+
 jest.mock('../../src/config/stripe', () => ({
-  getStripe: jest.fn().mockReturnValue({
-    transfers: {
-      create: jest.fn().mockResolvedValue({ id: 'tr_mock_123' }),
-    },
-    accounts: {
-      create: jest.fn().mockResolvedValue({ id: 'acct_mock_456' }),
-      retrieve: jest.fn().mockResolvedValue({
-        id: 'acct_mock_456',
-        charges_enabled: true,
-        payouts_enabled: true,
-        details_submitted: true,
-      }),
-    },
-    accountLinks: {
-      create: jest.fn().mockResolvedValue({ url: 'https://connect.stripe.com/mock' }),
-    },
-    webhooks: {
-      constructEvent: jest.fn(),
-    },
-  }),
+  getStripeClient: jest.fn().mockReturnValue(mockStripeInstance),
+  getStripe: jest.fn().mockReturnValue(mockStripeInstance),
 }));
 
 describe('Royalty CRUD integration', () => {
@@ -315,8 +318,8 @@ describe('Payout integration', () => {
   let userToken: string;
   let userId: string;
 
-  const { getStripe } = jest.requireMock('../../src/config/stripe') as {
-    getStripe: jest.Mock;
+  const { getStripeClient: getStripe } = jest.requireMock('../../src/config/stripe') as {
+    getStripeClient: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -437,8 +440,8 @@ describe('Payout integration', () => {
 });
 
 describe('Stripe webhook integration', () => {
-  const { getStripe } = jest.requireMock('../../src/config/stripe') as {
-    getStripe: jest.Mock;
+  const { getStripeClient: getStripe } = jest.requireMock('../../src/config/stripe') as {
+    getStripeClient: jest.Mock;
   };
 
   it('returns 400 when stripe-signature header is missing', async () => {

@@ -172,6 +172,11 @@ See `.env.example` for all supported variables.
 - `DELETE /api/tasks/:id`
 - `PATCH /api/tasks/:id/complete`
 
+### Stripe Connect
+- `POST /api/stripe/connect/accounts` — create (or return) a Stripe Express connected account
+- `POST /api/stripe/connect/onboarding-link` — generate an onboarding link
+- `GET /api/stripe/connect/account` — get connected account status
+
 ## Docker
 
 ```bash

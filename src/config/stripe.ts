@@ -1,12 +1,16 @@
 import Stripe from 'stripe';
 import { getConfig } from './env';
 
-let stripeInstance: Stripe | null = null;
+let stripeClient: Stripe | null = null;
 
-export const getStripe = (): Stripe => {
-  if (!stripeInstance) {
+export const getStripeClient = (): Stripe => {
+  if (!stripeClient) {
     const { STRIPE_SECRET_KEY } = getConfig();
-    stripeInstance = new Stripe(STRIPE_SECRET_KEY);
+    stripeClient = new Stripe(STRIPE_SECRET_KEY);
   }
-  return stripeInstance;
+
+  return stripeClient;
 };
+
+/** Alias for backwards compatibility */
+export const getStripe = getStripeClient;

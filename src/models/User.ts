@@ -35,7 +35,8 @@ const userSchema = new Schema(
     },
     stripeAccountId: {
       type: String,
-      default: null,
+      index: true,
+      sparse: true,
     },
   },
   {
