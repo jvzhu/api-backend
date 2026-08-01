@@ -61,41 +61,38 @@ export const createPayout = async (
   const royaltyIds = royalties.map((r) => r._id);
 
   // Create payout doc first (without stripeTransferId) to get an id for metadata
+  const payout = new Payout({
+    owner: new mongoose.Types.ObjectId(userId),
+    royalties: royaltyIds,
+    amount,
+    currency,
+    status: 'created',
+  });
+  await payout.save();
+
+  // Call Stripe outside DB transaction
+  const stripe = getStripeClient();
+  let transfer: { id: string };
+  try {
+    transfer = await stripe.transfers.create({
+      amount,
+      currency: currency.toLowerCase(),
+      destination: stripeAccountId,
+      metadata: { payoutId: String(payout._id) },
+    });
+  } catch (stripeError) {
+    payout.status = 'failed';
+    await payout.save();
+    throw new AppError(
+      `Stripe transfer failed: ${stripeError instanceof Error ? stripeError.message : String(stripeError)}`,
+      502,
+    );
+  }
+
   const session = await mongoose.startSession();
-
-  let payout: InstanceType<typeof Payout>;
-
   try {
     session.startTransaction();
 
-    payout = new Payout({
-      owner: new mongoose.Types.ObjectId(userId),
-      royalties: royaltyIds,
-      amount,
-      currency,
-      status: 'created',
-    });
-    await payout.save({ session });
-
-    // Call Stripe
-    const stripe = getStripeClient();
-    let transfer: { id: string };
-    try {
-      transfer = await stripe.transfers.create({
-        amount,
-        currency: currency.toLowerCase(),
-        destination: stripeAccountId,
-        metadata: { payoutId: String(payout._id) },
-      });
-    } catch (stripeError) {
-      await session.abortTransaction();
-      throw new AppError(
-        `Stripe transfer failed: ${stripeError instanceof Error ? stripeError.message : String(stripeError)}`,
-        502,
-      );
-    }
-
-    // Update payout with transfer id and mark royalties paid
     payout.stripeTransferId = transfer.id;
     payout.status = 'paid';
     await payout.save({ session });
