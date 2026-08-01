@@ -128,12 +128,14 @@ export const listPayouts = async (
     filter.status = status;
   }
 
+  const safeFilter = mongoose.sanitizeFilter(filter);
+
   const [data, total] = await Promise.all([
-    Payout.find(filter)
+    Payout.find(safeFilter)
       .sort({ [sortBy]: order === 'asc' ? 1 : -1 })
       .skip((page - 1) * limit)
       .limit(limit),
-    Payout.countDocuments(filter),
+    Payout.countDocuments(safeFilter),
   ]);
 
   return {

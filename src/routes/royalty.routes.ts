@@ -265,8 +265,10 @@ function parseCSVLine(line: string): string[] {
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
+  // Cap iteration to prevent excessive processing of oversized user-supplied lines
+  const maxLen = Math.min(line.length, 5000);
 
-  for (let i = 0; i < line.length; i++) {
+  for (let i = 0; i < maxLen; i++) {
     const char = line[i];
     if (char === '"') {
       if (inQuotes && line[i + 1] === '"') {
