@@ -10,6 +10,7 @@ import { swaggerDocument } from './docs/swagger';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRouter } from './routes/auth.routes';
 import { healthRouter } from './routes/health.routes';
+import { stripeConnectRouter } from './routes/stripe-connect.routes';
 import { taskRouter } from './routes/task.routes';
 import { userRouter } from './routes/user.routes';
 
@@ -42,6 +43,7 @@ export const createApp = () => {
   app.use('/api/auth', authRouter);
   app.use('/api/users', userRouter);
   app.use('/api/tasks', taskRouter);
+  app.use('/api/stripe/connect', stripeConnectRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
