@@ -101,11 +101,22 @@ export const createPayout = async (
     payout.status = 'paid';
     await payout.save({ session });
 
-    await Royalty.updateMany(
-      { _id: { $in: royaltyIds } },
+    // Only update royalties that are still pending and unclaimed to guard
+    // against concurrent payouts/webhook updates while the Stripe call was
+    // in flight. If any royalty was modified concurrently, abort and rely on
+    // the webhook reconciliation path to settle the payout.
+    const updateResult = await Royalty.updateMany(
+      { _id: { $in: royaltyIds }, status: 'pending', payoutId: null },
       { status: 'paid', payoutId: payout._id },
       { session },
     );
+
+    if (updateResult.modifiedCount !== royaltyIds.length) {
+      throw new AppError(
+        'One or more royalties were modified concurrently; payout will be reconciled via webhook',
+        409,
+      );
+    }
 
     await session.commitTransaction();
   } catch (updateError) {
