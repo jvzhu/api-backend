@@ -9,6 +9,7 @@ Production-ready REST API backend with Express.js, TypeScript, MongoDB, JWT auth
 - JWT access/refresh token authentication with refresh token revocation
 - Role-based access control for admin user management
 - User and task CRUD APIs with pagination, filtering, sorting, and caching
+- Public books catalogue endpoints (`/books` and `/books/:isbn`)
 - Request validation with Zod
 - Global error handling, rate limiting, Helmet, CORS, and request logging
 - Swagger UI at `/docs` and OpenAPI JSON at `/docs.json`
@@ -65,6 +66,10 @@ See `.env.example` for all supported variables.
 - `PUT /api/tasks/:id`
 - `DELETE /api/tasks/:id`
 - `PATCH /api/tasks/:id/complete`
+
+### Books
+- `GET /books`
+- `GET /books/:isbn`
 
 ### Stripe Connect
 - `POST /api/stripe/connect/accounts` — create (or return) a Stripe Express connected account
