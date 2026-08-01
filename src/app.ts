@@ -22,13 +22,19 @@ import { userRouter } from './routes/user.routes';
 export const createApp = () => {
   const app = express();
   const config = getConfig();
+  const stripeWebhookRateLimit = rateLimit({
+    windowMs: 60 * 1000,
+    max: 1000,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
   app.use(helmet());
   app.use(cors());
 
   // Stripe webhook must receive the raw body — only apply raw parsing to this specific path.
-  // Mounted before the global rate limiter so bursts/retries from Stripe are not throttled.
-  app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }), stripeWebhookRouter);
+  // Mount it before the global limiter, but keep a generous route-specific cap in place.
+  app.use('/api/stripe/webhooks', stripeWebhookRateLimit, express.raw({ type: 'application/json' }), stripeWebhookRouter);
 
   app.use(
     rateLimit({
