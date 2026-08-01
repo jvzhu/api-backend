@@ -21,5 +21,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add ssrn-tracker/ssrn_stats_history.csv
-          git commit -m "SSRN stats snapshot $(date +%F)" || echo "No changes"
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "SSRN stats snapshot $(date +%F)"
+            git push
+          fi
