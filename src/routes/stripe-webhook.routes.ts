@@ -21,7 +21,8 @@ stripeWebhookRouter.post(
       return;
     }
 
-    const sig = req.headers['stripe-signature'];
+    const sigHeader = req.headers['stripe-signature'];
+    const sig = Array.isArray(sigHeader) ? sigHeader[0] : sigHeader;
     if (!sig) {
       next(new AppError('Missing stripe-signature header', 400));
       return;
@@ -30,7 +31,7 @@ stripeWebhookRouter.post(
     let event;
     try {
       const stripe = getStripeClient();
-      event = stripe.webhooks.constructEvent(req.body as Buffer, sig as string, STRIPE_WEBHOOK_SECRET);
+      event = stripe.webhooks.constructEvent(req.body as Buffer, sig, STRIPE_WEBHOOK_SECRET);
     } catch (err) {
       next(new AppError(`Webhook signature verification failed: ${err instanceof Error ? err.message : String(err)}`, 400));
       return;

@@ -22,7 +22,6 @@ const royaltyBody = {
   period: z.string().trim().min(1).max(20),
   amount: z.number().int('Amount must be an integer (minor units / cents)'),
   currency: z.string().trim().length(3).toUpperCase().default('USD'),
-  status: z.enum(['pending', 'paid', 'failed']).optional(),
 };
 
 export const createRoyaltySchema = z.object({
@@ -43,7 +42,6 @@ export const updateRoyaltySchema = z.object({
       period: z.string().trim().min(1).max(20).optional(),
       amount: z.number().int('Amount must be an integer (minor units / cents)').optional(),
       currency: z.string().trim().length(3).toUpperCase().optional(),
-      status: z.enum(['pending', 'paid', 'failed']).optional(),
     })
     .refine((value) => Object.keys(value).length > 0, 'At least one field must be provided'),
   params: z.object({

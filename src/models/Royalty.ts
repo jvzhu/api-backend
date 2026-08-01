@@ -69,7 +69,12 @@ const royaltySchema = new Schema(
 );
 
 royaltySchema.index({ owner: 1, isbn: 1 });
-royaltySchema.index({ owner: 1, isbn: 1, period: 1, source: 1 }, { sparse: true });
+// Enforce duplicate prevention at the DB level; only applies when isbn is set (a string),
+// matching the application-side duplicate check during CSV import.
+royaltySchema.index(
+  { owner: 1, isbn: 1, period: 1, source: 1 },
+  { unique: true, partialFilterExpression: { isbn: { $type: 'string' } } },
+);
 
 export type RoyaltyDocument = InferSchemaType<typeof royaltySchema> & { _id: Schema.Types.ObjectId };
 export const Royalty = model('Royalty', royaltySchema);

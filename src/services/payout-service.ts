@@ -60,42 +60,40 @@ export const createPayout = async (
   const amount = royalties.reduce((sum, r) => sum + (r.amount as number), 0);
   const royaltyIds = royalties.map((r) => r._id);
 
-  // Create payout doc first (without stripeTransferId) to get an id for metadata
+  // Persist the payout as "created" and commit before calling Stripe so no external
+  // network call happens inside a MongoDB transaction. If Stripe fails, mark the
+  // payout as failed (compensating action) instead of relying on a rollback.
+  const payout = await Payout.create({
+    owner: new mongoose.Types.ObjectId(userId),
+    royalties: royaltyIds,
+    amount,
+    currency,
+    status: 'created',
+  });
+
+  const stripe = getStripeClient();
+  let transfer: { id: string };
+  try {
+    transfer = await stripe.transfers.create({
+      amount,
+      currency: currency.toLowerCase(),
+      destination: stripeAccountId,
+      metadata: { payoutId: String(payout._id) },
+    });
+  } catch (stripeError) {
+    payout.status = 'failed';
+    await payout.save();
+    throw new AppError(
+      `Stripe transfer failed: ${stripeError instanceof Error ? stripeError.message : String(stripeError)}`,
+      502,
+    );
+  }
+
+  // Record the transfer and mark royalties paid atomically
   const session = await mongoose.startSession();
-
-  let payout: InstanceType<typeof Payout>;
-
   try {
     session.startTransaction();
 
-    payout = new Payout({
-      owner: new mongoose.Types.ObjectId(userId),
-      royalties: royaltyIds,
-      amount,
-      currency,
-      status: 'created',
-    });
-    await payout.save({ session });
-
-    // Call Stripe
-    const stripe = getStripeClient();
-    let transfer: { id: string };
-    try {
-      transfer = await stripe.transfers.create({
-        amount,
-        currency: currency.toLowerCase(),
-        destination: stripeAccountId,
-        metadata: { payoutId: String(payout._id) },
-      });
-    } catch (stripeError) {
-      await session.abortTransaction();
-      throw new AppError(
-        `Stripe transfer failed: ${stripeError instanceof Error ? stripeError.message : String(stripeError)}`,
-        502,
-      );
-    }
-
-    // Update payout with transfer id and mark royalties paid
     payout.stripeTransferId = transfer.id;
     payout.status = 'paid';
     await payout.save({ session });
