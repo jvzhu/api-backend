@@ -178,6 +178,11 @@ describe('createPayout', () => {
 
     const unchanged = await Royalty.findById(r1._id);
     expect(unchanged?.status).toBe('pending');
+
+    // Compensating action: the persisted payout is marked failed
+    const failedPayout = await Payout.findOne({ owner: user._id });
+    expect(failedPayout?.status).toBe('failed');
+    expect(failedPayout?.stripeTransferId).toBeUndefined();
   });
 });
 
