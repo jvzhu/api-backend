@@ -60,42 +60,43 @@ export const createPayout = async (
   const amount = royalties.reduce((sum, r) => sum + (r.amount as number), 0);
   const royaltyIds = royalties.map((r) => r._id);
 
-  // Create payout doc first (without stripeTransferId) to get an id for metadata
+  // Persist payout as "created" first (without stripeTransferId) to get an id for
+  // metadata, and commit it before calling Stripe so no external network call
+  // happens inside a MongoDB transaction.
+  const payout = new Payout({
+    owner: new mongoose.Types.ObjectId(userId),
+    royalties: royaltyIds,
+    amount,
+    currency,
+    status: 'created',
+  });
+  await payout.save();
+
+  // Call Stripe outside of any transaction
+  const stripe = getStripeClient();
+  let transfer: { id: string };
+  try {
+    transfer = await stripe.transfers.create({
+      amount,
+      currency: currency.toLowerCase(),
+      destination: stripeAccountId,
+      metadata: { payoutId: String(payout._id) },
+    });
+  } catch (stripeError) {
+    // Compensating action: mark the persisted payout as failed
+    payout.status = 'failed';
+    await payout.save();
+    throw new AppError(
+      `Stripe transfer failed: ${stripeError instanceof Error ? stripeError.message : String(stripeError)}`,
+      502,
+    );
+  }
+
+  // Update payout with transfer id and mark royalties paid in a short transaction
   const session = await mongoose.startSession();
-
-  let payout: InstanceType<typeof Payout>;
-
   try {
     session.startTransaction();
 
-    payout = new Payout({
-      owner: new mongoose.Types.ObjectId(userId),
-      royalties: royaltyIds,
-      amount,
-      currency,
-      status: 'created',
-    });
-    await payout.save({ session });
-
-    // Call Stripe
-    const stripe = getStripeClient();
-    let transfer: { id: string };
-    try {
-      transfer = await stripe.transfers.create({
-        amount,
-        currency: currency.toLowerCase(),
-        destination: stripeAccountId,
-        metadata: { payoutId: String(payout._id) },
-      });
-    } catch (stripeError) {
-      await session.abortTransaction();
-      throw new AppError(
-        `Stripe transfer failed: ${stripeError instanceof Error ? stripeError.message : String(stripeError)}`,
-        502,
-      );
-    }
-
-    // Update payout with transfer id and mark royalties paid
     payout.stripeTransferId = transfer.id;
     payout.status = 'paid';
     await payout.save({ session });
@@ -107,6 +108,15 @@ export const createPayout = async (
     );
 
     await session.commitTransaction();
+  } catch (updateError) {
+    // Compensating action: the Stripe transfer succeeded but the DB update did
+    // not commit. Record the transfer id on the payout (outside the aborted
+    // transaction) so webhook reconciliation can settle it later.
+    await Payout.updateOne(
+      { _id: payout._id },
+      { stripeTransferId: transfer.id },
+    ).catch(() => undefined);
+    throw updateError;
   } finally {
     await session.endSession();
   }
