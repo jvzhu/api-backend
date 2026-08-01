@@ -256,16 +256,25 @@ royaltyRouter.post('/import', upload.single('file'), async (req, res) => {
       }
     }
 
-    await Royalty.create({
-      owner: ownerId,
-      source,
-      title,
-      isbn: isbn ?? null,
-      period,
-      amount,
-      currency,
-    });
-    imported++;
+    try {
+      await Royalty.create({
+        owner: ownerId,
+        source,
+        title,
+        isbn: isbn ?? null,
+        period,
+        amount,
+        currency,
+      });
+      imported++;
+    } catch (err) {
+      // Duplicate key from the unique (owner, isbn, period, source) index — e.g. a concurrent import
+      if (err && typeof err === 'object' && 'code' in err && (err as { code?: unknown }).code === 11000) {
+        skipped++;
+        continue;
+      }
+      throw err;
+    }
   }
 
   res.status(201).json({ imported, skipped, errors });

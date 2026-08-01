@@ -53,5 +53,8 @@ const payoutSchema = new Schema(
   },
 );
 
+// Stripe transfer IDs are globally unique; index them for fast webhook lookups
+payoutSchema.index({ stripeTransferId: 1 }, { unique: true, sparse: true });
+
 export type PayoutDocument = InferSchemaType<typeof payoutSchema> & { _id: Schema.Types.ObjectId };
 export const Payout = model('Payout', payoutSchema);

@@ -69,7 +69,12 @@ const royaltySchema = new Schema(
 );
 
 royaltySchema.index({ owner: 1, isbn: 1 });
-royaltySchema.index({ owner: 1, isbn: 1, period: 1, source: 1 }, { sparse: true });
+// Unique at the DB level to prevent duplicate imports racing past the application-side
+// duplicate check; only enforced when isbn is a string (rows without an ISBN are exempt)
+royaltySchema.index(
+  { owner: 1, isbn: 1, period: 1, source: 1 },
+  { unique: true, partialFilterExpression: { isbn: { $type: 'string' } } },
+);
 
 export type RoyaltyDocument = InferSchemaType<typeof royaltySchema> & { _id: Schema.Types.ObjectId };
 export const Royalty = model('Royalty', royaltySchema);
