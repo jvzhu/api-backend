@@ -33,6 +33,10 @@ const userSchema = new Schema(
       avatarUrl: { type: String, default: '' },
       timezone: { type: String, default: 'UTC' },
     },
+    stripeAccountId: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,
