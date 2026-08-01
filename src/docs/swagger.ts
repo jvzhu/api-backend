@@ -11,6 +11,7 @@ export const swaggerDocument = {
     { name: 'Authentication', description: 'Registration, login, refresh, logout, and current user' },
     { name: 'Users', description: 'Administrative user management and profile access' },
     { name: 'Tasks', description: 'Authenticated task management' },
+    { name: 'Books', description: 'Public books catalogue access' },
     { name: 'Stripe Connect', description: 'Stripe Express connected account creation and onboarding' },
   ],
   components: {
@@ -74,6 +75,16 @@ export const swaggerDocument = {
           dueDate: { type: 'string', format: 'date-time' },
           completedAt: { type: 'string', format: 'date-time', nullable: true },
           owner: { type: 'string' },
+        },
+      },
+      Book: {
+        type: 'object',
+        required: ['title', 'isbn', 'publisher'],
+        properties: {
+          title: { type: 'string' },
+          isbn: { type: 'string', example: '9789999347532' },
+          publisher: { type: 'string', example: 'Eliva Press' },
+          author: { type: 'string', example: 'Vivien Jiaqian Zhu' },
         },
       },
     },
@@ -251,6 +262,51 @@ export const swaggerDocument = {
         summary: 'Mark a task as complete',
         security: [{ bearerAuth: [] }],
         responses: { '200': { description: 'Task marked complete' } },
+      },
+    },
+    '/books': {
+      get: {
+        tags: ['Books'],
+        summary: 'List all books in the catalogue',
+        responses: {
+          '200': {
+            description: 'Books list',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Book' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/books/{isbn}': {
+      get: {
+        tags: ['Books'],
+        summary: 'Get a book by ISBN',
+        parameters: [
+          {
+            name: 'isbn',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', pattern: '^\\d{13}$' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Book payload',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Book' },
+              },
+            },
+          },
+          '400': { description: 'Invalid ISBN format' },
+          '404': { description: 'Book not found' },
+        },
       },
     },
     '/api/stripe/connect/accounts': {
