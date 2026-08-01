@@ -120,6 +120,7 @@ export const createPayout = async (
 
     await session.commitTransaction();
   } catch (updateError) {
+    await session.abortTransaction().catch(() => undefined);
     // Compensating action: the Stripe transfer succeeded but the DB update did
     // not commit. Record the transfer id on the payout (outside the aborted
     // transaction) so webhook reconciliation can settle it later.
