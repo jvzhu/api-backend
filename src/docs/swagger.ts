@@ -130,19 +130,19 @@ export const swaggerDocument = {
         tags: ['Books'],
         summary: 'Get a book by ISBN',
         parameters: [
-{
-  name: 'isbn',
-  in: 'path',
-  required: true,
-  schema: {
-    type: 'string',
-    example: '9789999325554',
-    minLength: 13,
-    maxLength: 13,
-    pattern: '^\\d{13}$',
-  },
-  description: '13-digit ISBN',
-},
+          {
+            name: 'isbn',
+            in: 'path',
+            required: true,
+            schema: {
+              type: 'string',
+              example: '9789999325554',
+              minLength: 13,
+              maxLength: 13,
+              pattern: '^\\d{13}$',
+            },
+            description: '13-digit ISBN',
+          },
         ],
         responses: {
           '200': {
@@ -158,6 +158,7 @@ export const swaggerDocument = {
               },
             },
           },
+          '400': { description: 'Invalid ISBN' },
           '404': { description: 'Book not found' },
         },
       },

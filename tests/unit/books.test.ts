@@ -42,4 +42,10 @@ describe('Books endpoints', () => {
 
     expect(response.status).toBe(404);
   });
+
+  it('GET /api/books/:isbn returns 400 for malformed ISBN', async () => {
+    const response = await request(app).get('/api/books/not-an-isbn');
+
+    expect(response.status).toBe(400);
+  });
 });
