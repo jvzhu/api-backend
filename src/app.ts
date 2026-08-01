@@ -10,7 +10,10 @@ import { swaggerDocument } from './docs/swagger';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRouter } from './routes/auth.routes';
 import { healthRouter } from './routes/health.routes';
+import { payoutRouter } from './routes/payout.routes';
+import { royaltyRouter } from './routes/royalty.routes';
 import { stripeConnectRouter } from './routes/stripe-connect.routes';
+import { stripeWebhookRouter } from './routes/stripe-webhook.routes';
 import { taskRouter } from './routes/task.routes';
 import { userRouter } from './routes/user.routes';
 
@@ -28,7 +31,13 @@ export const createApp = () => {
       legacyHeaders: false,
     }),
   );
+
+  // Stripe webhook must receive the raw body — only apply raw parsing to this specific path
+  app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }), stripeWebhookRouter);
+
   app.use(express.json({ limit: '1mb' }));
+  // Also support text/csv bodies for the royalties import endpoint
+  app.use(express.text({ type: 'text/csv', limit: '2mb' }));
   app.use(
     morgan('combined', {
       stream: {
@@ -44,6 +53,8 @@ export const createApp = () => {
   app.use('/api/users', userRouter);
   app.use('/api/tasks', taskRouter);
   app.use('/api/stripe/connect', stripeConnectRouter);
+  app.use('/api/royalties', royaltyRouter);
+  app.use('/api/payouts', payoutRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

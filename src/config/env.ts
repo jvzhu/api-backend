@@ -17,6 +17,7 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().default(''),
   STRIPE_CONNECT_REFRESH_URL: z.string().url().default('http://localhost:3000/stripe/refresh'),
   STRIPE_CONNECT_RETURN_URL: z.string().url().default('http://localhost:3000/stripe/return'),
+  STRIPE_WEBHOOK_SECRET: z.string().default(''),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
