@@ -79,11 +79,13 @@ export const swaggerDocument = {
       },
       Book: {
         type: 'object',
+        required: ['title', 'isbn', 'publisher', 'bookshopUrl'],
         properties: {
-          title: { type: 'string', example: 'Exploring Art, Knowledge and Movement in Japanese Fashion' },
-          isbn: { type: 'string', example: '9789999325554' },
+          title: { type: 'string', example: "The Visual Ethnographer's Data Other: Secrets Unveiled for a Sociological J. M. Coetzee" },
+          isbn: { type: 'string', example: '9789999347532' },
           publisher: { type: 'string', example: 'Eliva Press' },
-          bookshopUrl: { type: 'string', format: 'uri', example: 'https://bookshop.org/lists/eliva-press-catalogue' },
+          author: { type: 'string', example: 'Vivien Jiaqian Zhu' },
+          bookshopUrl: { type: 'string', format: 'uri', example: 'https://bookshop.org/p/books/the-visual-ethnographer-s-data-other-secrets-unveiled-for-a-sociological-j-m-coetzee-vivien-jiaqian-zhu-26417-22025-20521/e8697433f020833b?ean=9789999347532' },
         },
       },
     },
@@ -324,6 +326,51 @@ export const swaggerDocument = {
         summary: 'Mark a task as complete',
         security: [{ bearerAuth: [] }],
         responses: { '200': { description: 'Task marked complete' } },
+      },
+    },
+    '/books': {
+      get: {
+        tags: ['Books'],
+        summary: 'List all books in the catalogue',
+        responses: {
+          '200': {
+            description: 'Books list',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/Book' },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/books/{isbn}': {
+      get: {
+        tags: ['Books'],
+        summary: 'Get a book by ISBN',
+        parameters: [
+          {
+            name: 'isbn',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', pattern: '^\\d{13}$' },
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Book payload',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Book' },
+              },
+            },
+          },
+          '400': { description: 'Invalid ISBN format' },
+          '404': { description: 'Book not found' },
+        },
       },
     },
     '/api/stripe/connect/accounts': {

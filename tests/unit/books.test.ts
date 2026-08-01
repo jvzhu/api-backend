@@ -1,7 +1,7 @@
 import express from 'express';
 import request from 'supertest';
 import { booksRouter } from '../../src/routes/books.routes';
-import { books, BOOKSHOP_LIST_URL } from '../../src/data/books';
+import { books } from '../../src/data/books';
 import { errorHandler } from '../../src/middleware/error-handler';
 
 const app = express();
@@ -14,27 +14,14 @@ describe('Books endpoints', () => {
     const response = await request(app).get('/api/books');
 
     expect(response.status).toBe(200);
-    expect(response.body.books).toHaveLength(books.length);
-
-    for (const book of response.body.books) {
-      expect(book).toMatchObject({
-        title: expect.any(String),
-        isbn: expect.any(String),
-        publisher: expect.any(String),
-        bookshopUrl: BOOKSHOP_LIST_URL,
-      });
-    }
+    expect(response.body).toEqual({ books });
   });
 
   it('GET /api/books/:isbn returns a single book', async () => {
-    const { isbn } = books[0];
-    const response = await request(app).get(`/api/books/${isbn}`);
+    const response = await request(app).get(`/api/books/${books[0].isbn}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.book).toMatchObject({
-      isbn,
-      bookshopUrl: BOOKSHOP_LIST_URL,
-    });
+    expect(response.body).toEqual({ book: books[0] });
   });
 
   it('GET /api/books/:isbn returns 404 for unknown ISBN', async () => {

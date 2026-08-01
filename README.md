@@ -9,6 +9,7 @@ Production-ready REST API backend with Express.js, TypeScript, MongoDB, JWT auth
 - JWT access/refresh token authentication with refresh token revocation
 - Role-based access control for admin user management
 - User and task CRUD APIs with pagination, filtering, sorting, and caching
+- Public books catalogue endpoints (`/books` and `/books/:isbn`)
 - Request validation with Zod
 - Global error handling, rate limiting, Helmet, CORS, and request logging
 - Swagger UI at `/docs` and OpenAPI JSON at `/docs.json`
@@ -66,15 +67,17 @@ See `.env.example` for all supported variables.
 - `DELETE /api/tasks/:id`
 - `PATCH /api/tasks/:id/complete`
 
+### Books
+Seed data sourced from the [Eliva Press Catalogue](https://bookshop.org/lists/eliva-press-catalogue) on Bookshop.org by Vivien Jiaqian Zhu.
+- `GET /books` — list all books
+- `GET /books/:isbn` — get a book by ISBN
+- `GET /api/books` — list all books with `{ books: [...] }`
+- `GET /api/books/:isbn` — get a book by ISBN with `{ book: ... }`
+
 ### Stripe Connect
 - `POST /api/stripe/connect/accounts` — create (or return) a Stripe Express connected account
 - `POST /api/stripe/connect/onboarding-link` — generate an onboarding link
 - `GET /api/stripe/connect/account` — get connected account status
-
-### Books
-Seed data sourced from the [Eliva Press Catalogue](https://bookshop.org/lists/eliva-press-catalogue) on Bookshop.org by Vivien Jiaqian Zhu.
-- `GET /api/books` — list all books
-- `GET /api/books/:isbn` — get a book by ISBN
 
 ## Docker
 
