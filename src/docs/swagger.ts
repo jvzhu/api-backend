@@ -13,6 +13,8 @@ export const swaggerDocument = {
     { name: 'Tasks', description: 'Authenticated task management' },
     { name: 'Books', description: 'Public books catalogue access' },
     { name: 'Stripe Connect', description: 'Stripe Express connected account creation and onboarding' },
+    { name: 'Royalties', description: 'Royalties ledger with ISBN support and multi-source grouping' },
+    { name: 'Payouts', description: 'Stripe Connect payouts for pending royalties' },
   ],
   components: {
     securitySchemes: {
@@ -348,6 +350,198 @@ export const swaggerDocument = {
           '401': { description: 'Unauthorized' },
           '404': { description: 'No connected Stripe account found' },
           '502': { description: 'Stripe API error' },
+        },
+      },
+    },
+    '/api/royalties': {
+      post: {
+        tags: ['Royalties'],
+        summary: 'Create a royalty entry',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['source', 'period', 'amount'],
+                properties: {
+                  source: { type: 'string', example: 'Eliva Press' },
+                  title: { type: 'string', example: 'Exploring Art, Knowledge and Movement in Japanese Fashion' },
+                  isbn: { type: 'string', example: '978-99993-2-555-4' },
+                  period: { type: 'string', example: '2024' },
+                  amount: { type: 'integer', description: 'Amount in minor units (cents)', example: 12345 },
+                  currency: { type: 'string', example: 'USD' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Royalty created' },
+          '400': { description: 'Validation error' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+      get: {
+        tags: ['Royalties'],
+        summary: 'List royalties',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+          { name: 'source', in: 'query', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending', 'paid', 'failed'] } },
+          { name: 'period', in: 'query', schema: { type: 'string' } },
+          { name: 'isbn', in: 'query', schema: { type: 'string' } },
+          { name: 'sortBy', in: 'query', schema: { type: 'string', default: 'createdAt' } },
+          { name: 'order', in: 'query', schema: { type: 'string', enum: ['asc', 'desc'], default: 'desc' } },
+        ],
+        responses: {
+          '200': { description: 'Paginated list of royalties' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/api/royalties/summary': {
+      get: {
+        tags: ['Royalties'],
+        summary: 'Get royalties summary',
+        description: 'Returns totals grouped by currency/status, by source (e.g. Eliva Press vs Bookshop.org), and by ISBN.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Summary data' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/api/royalties/import': {
+      post: {
+        tags: ['Royalties'],
+        summary: 'Import royalties from CSV',
+        description: 'Accepts a text/csv body or multipart file with columns: source, title, isbn (optional), period, amount, currency. Amounts should be in decimal (e.g. "12.34") and will be converted to minor units.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'text/csv': { schema: { type: 'string' } },
+            'multipart/form-data': {
+              schema: {
+                type: 'object',
+                properties: { file: { type: 'string', format: 'binary' } },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Import result with imported/skipped/errors counts' },
+          '400': { description: 'No CSV data or missing required columns' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/api/royalties/{id}': {
+      get: {
+        tags: ['Royalties'],
+        summary: 'Get a royalty by ID',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Royalty entry' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Royalty not found' },
+        },
+      },
+      put: {
+        tags: ['Royalties'],
+        summary: 'Update a royalty',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } },
+        responses: {
+          '200': { description: 'Updated royalty' },
+          '400': { description: 'Validation error' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Royalty not found' },
+        },
+      },
+      delete: {
+        tags: ['Royalties'],
+        summary: 'Delete a royalty',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '204': { description: 'Deleted' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Royalty not found' },
+        },
+      },
+    },
+    '/api/payouts': {
+      post: {
+        tags: ['Payouts'],
+        summary: 'Create a payout',
+        description: 'Transfers pending royalties to the user\'s Stripe Express connected account.',
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  royaltyIds: { type: 'array', items: { type: 'string' }, description: 'Specific royalty IDs (omit to pay all pending)' },
+                  currency: { type: 'string', example: 'USD' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Payout created and marked paid' },
+          '400': { description: 'Validation error' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'No pending royalties or Stripe account not connected' },
+          '502': { description: 'Stripe transfer failed' },
+        },
+      },
+      get: {
+        tags: ['Payouts'],
+        summary: 'List payouts',
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['created', 'paid', 'failed'] } },
+        ],
+        responses: {
+          '200': { description: 'Paginated list of payouts' },
+          '401': { description: 'Unauthorized' },
+        },
+      },
+    },
+    '/api/payouts/{id}': {
+      get: {
+        tags: ['Payouts'],
+        summary: 'Get a payout by ID',
+        security: [{ bearerAuth: [] }],
+        parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Payout entry' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'Payout not found' },
+        },
+      },
+    },
+    '/api/stripe/webhooks': {
+      post: {
+        tags: ['Stripe Connect'],
+        summary: 'Stripe webhook endpoint',
+        description: 'Handles Stripe webhook events. Requires a raw body and valid stripe-signature header. Handles transfer.reversed to revert payout status.',
+        parameters: [{ name: 'stripe-signature', in: 'header', required: true, schema: { type: 'string' } }],
+        responses: {
+          '200': { description: 'Event received' },
+          '400': { description: 'Invalid signature or missing header' },
         },
       },
     },
