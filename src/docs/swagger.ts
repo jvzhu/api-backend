@@ -11,6 +11,7 @@ export const swaggerDocument = {
     { name: 'Authentication', description: 'Registration, login, refresh, logout, and current user' },
     { name: 'Users', description: 'Administrative user management and profile access' },
     { name: 'Tasks', description: 'Authenticated task management' },
+    { name: 'Stripe Connect', description: 'Stripe Express connected account creation and onboarding' },
   ],
   components: {
     securitySchemes: {
@@ -250,6 +251,48 @@ export const swaggerDocument = {
         summary: 'Mark a task as complete',
         security: [{ bearerAuth: [] }],
         responses: { '200': { description: 'Task marked complete' } },
+      },
+    },
+    '/api/stripe/connect/accounts': {
+      post: {
+        tags: ['Stripe Connect'],
+        summary: 'Create or retrieve a Stripe Express connected account',
+        description: 'Creates a new Stripe Express account for the authenticated user and stores its ID. Idempotent — returns the existing account ID if one already exists.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Existing connected account returned', content: { 'application/json': { schema: { type: 'object', properties: { stripeAccountId: { type: 'string', example: 'acct_1ExampleId' } } } } } },
+          '201': { description: 'New connected account created', content: { 'application/json': { schema: { type: 'object', properties: { stripeAccountId: { type: 'string', example: 'acct_1ExampleId' } } } } } },
+          '401': { description: 'Unauthorized' },
+          '502': { description: 'Stripe API error' },
+        },
+      },
+    },
+    '/api/stripe/connect/onboarding-link': {
+      post: {
+        tags: ['Stripe Connect'],
+        summary: 'Generate a Stripe Connect onboarding link',
+        description: 'Creates an account link for the authenticated user\'s connected account to complete Stripe Express onboarding.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Onboarding link', content: { 'application/json': { schema: { type: 'object', properties: { url: { type: 'string', example: 'https://connect.stripe.com/setup/e/...' }, expiresAt: { type: 'string', format: 'date-time' } } } } } },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'No connected Stripe account found' },
+          '502': { description: 'Stripe API error' },
+        },
+      },
+    },
+    '/api/stripe/connect/account': {
+      get: {
+        tags: ['Stripe Connect'],
+        summary: 'Get connected account status',
+        description: 'Returns the onboarding status of the authenticated user\'s Stripe Express connected account.',
+        security: [{ bearerAuth: [] }],
+        responses: {
+          '200': { description: 'Account status', content: { 'application/json': { schema: { type: 'object', properties: { id: { type: 'string' }, charges_enabled: { type: 'boolean' }, payouts_enabled: { type: 'boolean' }, details_submitted: { type: 'boolean' } } } } } },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'No connected Stripe account found' },
+          '502': { description: 'Stripe API error' },
+        },
       },
     },
   },
