@@ -9,7 +9,12 @@ booksRouter.get('/', (_req, res) => {
 });
 
 booksRouter.get('/:isbn', (req, res) => {
-  const book = books.find((b) => b.isbn === req.params.isbn);
+  const { isbn } = req.params;
+  if (!/^\d{13}$/.test(isbn)) {
+    throw new AppError('Invalid ISBN', 400);
+  }
+
+  const book = books.find((b) => b.isbn === isbn);
   if (!book) {
     throw new AppError('Book not found', 404);
   }
