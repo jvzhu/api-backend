@@ -124,7 +124,11 @@ export const listPayouts = async (
     owner: new mongoose.Types.ObjectId(userId),
   };
 
-  if (status) {
+  if (typeof status !== 'undefined') {
+    const allowedStatuses = new Set(['created', 'paid', 'failed']);
+    if (typeof status !== 'string' || !allowedStatuses.has(status)) {
+      throw new AppError('Invalid payout status', 400);
+    }
     filter.status = status;
   }
 
