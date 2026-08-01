@@ -75,6 +75,19 @@ See `.env.example` for all supported variables.
 - `POST /api/stripe/connect/accounts` — create (or return) a Stripe Express connected account
 - `POST /api/stripe/connect/onboarding-link` — generate an onboarding link
 - `GET /api/stripe/connect/account` — get connected account status
+- `POST /api/stripe/webhooks` — Stripe webhook endpoint (handles `transfer.reversed`)
+
+### Royalties
+- `POST /api/royalties` — create a royalty entry (amount in minor units; ISBN normalized)
+- `GET /api/royalties` — list royalties with pagination, filtering by source/status/period/isbn
+- `GET /api/royalties/summary` — totals grouped by currency/status, by source, and by ISBN
+- `POST /api/royalties/import` — CSV import (`source,title,isbn,period,amount,currency`; isbn optional; decimal amounts converted to cents; duplicate guard)
+- `GET /api/royalties/:id`, `PUT /api/royalties/:id`, `DELETE /api/royalties/:id`
+
+### Payouts
+- `POST /api/payouts` — transfer pending royalties to Stripe Express connected account
+- `GET /api/payouts` — list payouts with pagination
+- `GET /api/payouts/:id` — get a specific payout
 
 ## Docker
 

@@ -11,7 +11,10 @@ import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRouter } from './routes/auth.routes';
 import { bookRouter } from './routes/book.routes';
 import { healthRouter } from './routes/health.routes';
+import { payoutRouter } from './routes/payout.routes';
+import { royaltyRouter } from './routes/royalty.routes';
 import { stripeConnectRouter } from './routes/stripe-connect.routes';
+import { stripeWebhookRouter } from './routes/stripe-webhook.routes';
 import { taskRouter } from './routes/task.routes';
 import { userRouter } from './routes/user.routes';
 
@@ -21,6 +24,11 @@ export const createApp = () => {
 
   app.use(helmet());
   app.use(cors());
+
+  // Stripe webhook must receive the raw body — only apply raw parsing to this specific path.
+  // Mounted before the global rate limiter so bursts/retries from Stripe are not throttled.
+  app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }), stripeWebhookRouter);
+
   app.use(
     rateLimit({
       windowMs: config.RATE_LIMIT_WINDOW_MS,
@@ -29,7 +37,10 @@ export const createApp = () => {
       legacyHeaders: false,
     }),
   );
+
   app.use(express.json({ limit: '1mb' }));
+  // Also support text/csv bodies for the royalties import endpoint
+  app.use(express.text({ type: 'text/csv', limit: '2mb' }));
   app.use(
     morgan('combined', {
       stream: {
@@ -44,8 +55,10 @@ export const createApp = () => {
   app.use('/api/auth', authRouter);
   app.use('/api/users', userRouter);
   app.use('/api/tasks', taskRouter);
-  app.use('/api/stripe/connect', stripeConnectRouter);
   app.use('/books', bookRouter);
+  app.use('/api/stripe/connect', stripeConnectRouter);
+  app.use('/api/royalties', royaltyRouter);
+  app.use('/api/payouts', payoutRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
