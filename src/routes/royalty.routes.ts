@@ -11,6 +11,9 @@ export const royaltyRouter = Router();
 
 royaltyRouter.use(requireAuth);
 
+const MAX_CSV_LINES = 10000;
+const MAX_CSV_LINE_LENGTH = 10000;
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
@@ -198,6 +201,9 @@ royaltyRouter.post('/import', upload.single('file'), async (req, res) => {
   if (lines.length < 2) {
     throw new AppError('CSV must have a header row and at least one data row', 400);
   }
+  if (lines.length > MAX_CSV_LINES) {
+    throw new AppError(`CSV has too many rows (max ${MAX_CSV_LINES})`, 400);
+  }
 
   const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
   const requiredHeaders = ['source', 'period', 'amount'];
@@ -215,6 +221,11 @@ royaltyRouter.post('/import', upload.single('file'), async (req, res) => {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
+    if (line.length > MAX_CSV_LINE_LENGTH) {
+      errors.push({ row: i + 1, error: `Row exceeds maximum length of ${MAX_CSV_LINE_LENGTH} characters` });
+      skipped++;
+      continue;
+    }
 
     // Simple CSV parse (handles basic quoted fields)
     const values = parseCSVLine(line);
@@ -262,6 +273,13 @@ royaltyRouter.post('/import', upload.single('file'), async (req, res) => {
 
 /** Minimal CSV line parser — handles simple comma-separated values and basic double-quoted fields */
 function parseCSVLine(line: string): string[] {
+  if (typeof line !== 'string') {
+    throw new AppError('Invalid CSV row type', 400);
+  }
+  if (line.length > MAX_CSV_LINE_LENGTH) {
+    throw new AppError(`CSV row exceeds maximum length of ${MAX_CSV_LINE_LENGTH} characters`, 400);
+  }
+
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
