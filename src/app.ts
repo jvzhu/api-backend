@@ -9,6 +9,7 @@ import { logger } from './config/logger';
 import { swaggerDocument } from './docs/swagger';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { authRouter } from './routes/auth.routes';
+import { booksRouter } from './routes/books.routes';
 import { healthRouter } from './routes/health.routes';
 import { stripeConnectRouter } from './routes/stripe-connect.routes';
 import { taskRouter } from './routes/task.routes';
@@ -41,6 +42,7 @@ export const createApp = () => {
   app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
   app.get('/docs.json', (_req, res) => res.json(swaggerDocument));
   app.use('/api/auth', authRouter);
+  app.use('/api/books', booksRouter);
   app.use('/api/users', userRouter);
   app.use('/api/tasks', taskRouter);
   app.use('/api/stripe/connect', stripeConnectRouter);

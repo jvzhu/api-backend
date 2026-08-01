@@ -71,6 +71,11 @@ See `.env.example` for all supported variables.
 - `POST /api/stripe/connect/onboarding-link` — generate an onboarding link
 - `GET /api/stripe/connect/account` — get connected account status
 
+### Books
+Seed data sourced from the [Eliva Press Catalogue](https://bookshop.org/lists/eliva-press-catalogue) on Bookshop.org by Vivien Jiaqian Zhu.
+- `GET /api/books` — list all books
+- `GET /api/books/:isbn` — get a book by ISBN
+
 ## Docker
 
 ```bash

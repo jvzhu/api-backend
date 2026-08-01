@@ -9,6 +9,7 @@ export const swaggerDocument = {
   tags: [
     { name: 'Health', description: 'Service health checks' },
     { name: 'Authentication', description: 'Registration, login, refresh, logout, and current user' },
+    { name: 'Books', description: 'Eliva Press book catalogue (source: https://bookshop.org/lists/eliva-press-catalogue)' },
     { name: 'Users', description: 'Administrative user management and profile access' },
     { name: 'Tasks', description: 'Authenticated task management' },
     { name: 'Stripe Connect', description: 'Stripe Express connected account creation and onboarding' },
@@ -76,6 +77,15 @@ export const swaggerDocument = {
           owner: { type: 'string' },
         },
       },
+      Book: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', example: 'Exploring Art, Knowledge and Movement in Japanese Fashion' },
+          isbn: { type: 'string', example: '9789999325554' },
+          publisher: { type: 'string', example: 'Eliva Press' },
+          bookshopUrl: { type: 'string', format: 'uri', example: 'https://bookshop.org/lists/eliva-press-catalogue' },
+        },
+      },
     },
   },
   paths: {
@@ -87,6 +97,62 @@ export const swaggerDocument = {
           '200': {
             description: 'API health payload',
           },
+        },
+      },
+    },
+    '/api/books': {
+      get: {
+        tags: ['Books'],
+        summary: 'List all books in the Eliva Press catalogue',
+        description: 'Returns the full Eliva Press book catalogue. Seed data sourced from the [Bookshop.org list](https://bookshop.org/lists/eliva-press-catalogue) by Vivien Jiaqian Zhu.',
+        responses: {
+          '200': {
+            description: 'Array of books',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    books: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/Book' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/books/{isbn}': {
+      get: {
+        tags: ['Books'],
+        summary: 'Get a book by ISBN',
+        parameters: [
+          {
+            name: 'isbn',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', example: '9789999325554' },
+            description: '13-digit ISBN',
+          },
+        ],
+        responses: {
+          '200': {
+            description: 'Book payload',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    book: { $ref: '#/components/schemas/Book' },
+                  },
+                },
+              },
+            },
+          },
+          '404': { description: 'Book not found' },
         },
       },
     },
