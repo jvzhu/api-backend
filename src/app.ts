@@ -23,6 +23,11 @@ export const createApp = () => {
 
   app.use(helmet());
   app.use(cors());
+
+  // Stripe webhook must receive the raw body — only apply raw parsing to this specific path.
+  // Mounted before the global rate limiter so bursts/retries from Stripe are not throttled.
+  app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }), stripeWebhookRouter);
+
   app.use(
     rateLimit({
       windowMs: config.RATE_LIMIT_WINDOW_MS,
@@ -31,9 +36,6 @@ export const createApp = () => {
       legacyHeaders: false,
     }),
   );
-
-  // Stripe webhook must receive the raw body — only apply raw parsing to this specific path
-  app.use('/api/stripe/webhooks', express.raw({ type: 'application/json' }), stripeWebhookRouter);
 
   app.use(express.json({ limit: '1mb' }));
   // Also support text/csv bodies for the royalties import endpoint
