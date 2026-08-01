@@ -114,7 +114,7 @@ export const createPayout = async (
     // transaction) so webhook reconciliation can settle it later.
     await Payout.updateOne(
       { _id: payout._id },
-      { stripeTransferId: transfer.id },
+      { $set: { stripeTransferId: transfer.id } },
     ).catch(() => undefined);
     throw updateError;
   } finally {
