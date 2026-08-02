@@ -1,6 +1,6 @@
-"""Track SSRN paper views/downloads over time for an author.
+"""Track SSRN paper downloads over time for an author.
 
-Usage: python ssrn_stats_tracker.py
+Usage: python ssrn-tracker/ssrn_stats_tracker.py
 Scheduled weekly via .github/workflows/ssrn-tracker.yml
 """
 import csv

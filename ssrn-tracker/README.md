@@ -14,7 +14,7 @@ A GitHub Actions workflow (`.github/workflows/ssrn-tracker.yml`) runs every **Mo
 
 ```bash
 pip install requests beautifulsoup4
-python ssrn_stats_tracker.py
+python ssrn-tracker/ssrn_stats_tracker.py
 ```
 
 The CSV file will be created (or appended to) in the same directory as the script.
