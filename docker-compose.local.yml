@@ -1,0 +1,109 @@
+version: '3.9'
+
+services:
+  # MongoDB for local development and testing
+  mongo:
+    image: mongo:7-alpine
+    container_name: api-backend-mongo
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: localdevpass
+      MONGO_INITDB_DATABASE: api-backend
+    volumes:
+      - mongo-data:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - api-backend-network
+
+  # Stripe CLI for local webhook testing
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    container_name: api-backend-stripe
+    restart: unless-stopped
+    command: listen --api-key ${STRIPE_SECRET_KEY} --device-name local-dev --forward-to localhost:3000/api/stripe/webhooks
+    environment:
+      STRIPE_API_KEY: ${STRIPE_SECRET_KEY}
+    ports:
+      - '9111:9111'  # Stripe CLI dashboard
+    depends_on:
+      - app
+    networks:
+      - api-backend-network
+    # Run interactively to capture webhook signing key
+    stdin_open: true
+    tty: true
+    profiles:
+      - stripe
+
+  # Express.js API backend
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: api-backend-app
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      MONGODB_URI: mongodb://admin:localdevpass@mongo:27017/api-backend?authSource=admin
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-me}
+      ACCESS_TOKEN_TTL: 15m
+      REFRESH_TOKEN_TTL: 7d
+      LOG_LEVEL: debug
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX: 100
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      STRIPE_CONNECT_REFRESH_URL: http://localhost:3000/api/stripe/connect/refresh
+      STRIPE_CONNECT_RETURN_URL: http://localhost:3000/api/stripe/connect/return
+    volumes:
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - /app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - api-backend-network
+    command: npm run dev
+
+  # Optional: pgAdmin for MongoDB inspection (mongo-express)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: api-backend-mongo-express
+    restart: unless-stopped
+    ports:
+      - '8081:8081'
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: localdevpass
+      ME_CONFIG_MONGODB_URL: mongodb://admin:localdevpass@mongo:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: pass
+    depends_on:
+      - mongo
+    networks:
+      - api-backend-network
+    profiles:
+      - debug
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  api-backend-network:
+    driver: bridge
