@@ -10,7 +10,9 @@
     "start": "node dist/server.js",
     "lint": "tsc --noEmit",
     "test": "jest --runInBand",
-    "test:coverage": "jest --coverage --runInBand"
+    "test:coverage": "jest --coverage --runInBand",
+    "reconcile": "ts-node scripts/royalty-reconciliation.ts",
+    "reconcile:dry-run": "ts-node scripts/royalty-reconciliation.ts --dry-run"
   },
   "repository": {
     "type": "git",
@@ -41,6 +43,7 @@
     "mongoose": "^9.7.2",
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
+    "pdf-parse": "^1.1.1",
     "stripe": "^22.4.0",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
