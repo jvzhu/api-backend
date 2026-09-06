@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
 import { getStripeClient } from '../config/stripe';
 import { getConfig } from '../config/env';
 import { Payout } from '../models/Payout';
@@ -8,10 +9,18 @@ import { logger } from '../config/logger';
 
 export const stripeWebhookRouter = Router();
 
+const stripeWebhookRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Mount at /api/stripe/webhooks with express.raw() applied in app.ts for this path only.
 // The router handles POST / (root, since it's mounted at the full path).
 stripeWebhookRouter.post(
   '/',
+  stripeWebhookRateLimiter,
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { STRIPE_WEBHOOK_SECRET } = getConfig();
